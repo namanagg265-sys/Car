@@ -1,31 +1,18 @@
-<!DOCTYPE html><html lang="en">
+ <!DOCTYPE html><html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Velocity 3D ULTIMATE FINAL</title>
+<title>Velocity 3D FINAL CARS</title>
 <style>
 body { margin:0; overflow:hidden; font-family:Arial; }
-#hud, #leaderboard { position:absolute; top:10px; padding:12px; color:white; background:rgba(0,0,0,0.6); border-radius:10px; }
-#hud { left:10px; }
-#leaderboard { right:10px; }
-#msg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:gold; font-size:40px; display:none; }
-#splash, #menu { position:absolute; width:100%; height:100%; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white; z-index:10; }
-#splash { background:black; font-size:40px; }
-#menu { background:#000; z-index:9; }
-button { padding:15px 30px; font-size:20px; }
+#hud { position:absolute; top:10px; left:10px; color:white; background:rgba(0,0,0,0.6); padding:10px; border-radius:10px; }
 </style>
 </head>
-<body><div id="splash">Made by Nama</div><div id="menu">
-<h1>VELOCITY 3D</h1>
-<button onclick="startGame()">START GAME</button>
-</div><div id="hud">Speed: <span id="speed">0</span><br>Nitro: <span id="nitro">100</span><br>Lap: <span id="lap">1</span>/3</div>
-<div id="leaderboard"><b>Leaderboard</b><br><span id="board"></span></div>
-<div id="msg">🏁 YOU WIN! 🏁</div><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script>
-setTimeout(()=>document.getElementById('splash').style.display='none',2000);
-
+<body><div id="hud">Speed: <span id="speed">0</span></div><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script>
 let scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87ceeb);
+
 let camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,2000);
-let renderer=new THREE.WebGLRenderer({antialias:true});
+let renderer=new THREE.WebGLRenderer();
 renderer.setSize(innerWidth,innerHeight);
 document.body.appendChild(renderer.domElement);
 
@@ -34,123 +21,72 @@ light.position.set(10,20,10);
 scene.add(light);
 scene.add(new THREE.AmbientLight(0x404040));
 
-// ground & road
-let ground=new THREE.Mesh(new THREE.PlaneGeometry(2000,2000),new THREE.MeshStandardMaterial({color:0x228B22}));
-ground.rotation.x=-Math.PI/2; scene.add(ground);
+// road
 let road=new THREE.Mesh(new THREE.PlaneGeometry(20,2000),new THREE.MeshStandardMaterial({color:0x111111}));
-road.rotation.x=-Math.PI/2; scene.add(road);
+road.rotation.x=-Math.PI/2;
+scene.add(road);
 
-// road lines
-for(let i=0;i<100;i++){
- let line=new THREE.Mesh(new THREE.PlaneGeometry(1,10),new THREE.MeshBasicMaterial({color:0xffffff}));
- line.rotation.x=-Math.PI/2;
- line.position.set(0,0.02,-i*20);
- scene.add(line);
+// realistic car function
+function createCar(color){
+ let car=new THREE.Group();
+
+ let body=new THREE.Mesh(new THREE.BoxGeometry(2,0.7,4),new THREE.MeshStandardMaterial({color}));
+ let top=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.5,2),new THREE.MeshStandardMaterial({color:0x333333}));
+ top.position.y=0.6;
+
+ car.add(body,top);
+ car.position.y=0.5;
+ return car;
 }
 
-// finish
-let finishLine=new THREE.Mesh(new THREE.PlaneGeometry(20,3),new THREE.MeshBasicMaterial({color:0xffffff}));
-finishLine.rotation.x=-Math.PI/2; finishLine.position.z=-800; scene.add(finishLine);
+// player car
+let car=createCar(0xff0000);
+scene.add(car);
 
-// car
-let car=new THREE.Mesh(new THREE.BoxGeometry(2,1,4),new THREE.MeshStandardMaterial({color:0xff0000}));
-car.position.y=0.5; scene.add(car);
-
-// bots
+// emoji cars (different colors)
+let colors=[0x00ff00,0x0000ff,0xffff00,0xff00ff,0x00ffff,0xffffff];
 let bots=[];
-for(let i=0;i<5;i++){
- let bot=new THREE.Mesh(new THREE.BoxGeometry(2,1,4),new THREE.MeshStandardMaterial({color:Math.random()*0xffffff}));
- bot.position.set(Math.random()*10-5,0.5,-Math.random()*300);
- bots.push(bot); scene.add(bot);
-}
 
-// trees
-for(let i=0;i<60;i++){
- let trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,3),new THREE.MeshStandardMaterial({color:0x8b4513}));
- let leaves=new THREE.Mesh(new THREE.SphereGeometry(1.5),new THREE.MeshStandardMaterial({color:0x228B22}));
- let x=(Math.random()>0.5?15:-15);
- let z=Math.random()*1800-900;
- trunk.position.set(x,1.5,z);
- leaves.position.set(x,3.5,z);
- scene.add(trunk); scene.add(leaves);
-}
+colors.forEach((c,i)=>{
+ let bot=createCar(c);
+ bot.position.set((Math.random()*10-5),0.5,-(i+1)*60);
+ bots.push(bot);
+ scene.add(bot);
+});
 
-// sound
-let engineSound=new Audio("https://actions.google.com/sounds/v1/transportation/car_accelerate.ogg");
-engineSound.loop=true;
-let nitroSound=new Audio("https://actions.google.com/sounds/v1/fire/fire_burst.ogg");
-
+// controls
 let keys={};
 document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
 document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 
-let speed=0,nitro=100,lap=1,finished=false,gameStarted=false;
-
-function startGame(){
- document.getElementById('menu').style.display='none';
- engineSound.play();
- gameStarted=true;
-}
+let speed=0;
 
 function animate(){
  requestAnimationFrame(animate);
 
- if(!gameStarted){ renderer.render(scene,camera); return; }
+ if(keys['w']) speed+=0.02;
+ if(keys['s']) speed-=0.02;
 
- if(!finished){
-  if(keys['w']) speed+=0.02;
-  if(keys['s']) speed-=0.02;
+ speed*=0.98;
+ car.position.z-=speed;
 
-  if(keys['shift']&&nitro>0){ speed+=0.05; nitro-=1; if(nitroSound.paused) nitroSound.play(); }
-  else if(nitro<100){ nitro+=0.5; }
+ if(keys['a']) car.position.x-=0.2;
+ if(keys['d']) car.position.x+=0.2;
 
-  speed*=0.98;
-  car.position.z-=speed;
+ bots.forEach(bot=>{
+  bot.position.z+=0.5;
+  if(bot.position.z>car.position.z+50){ bot.position.z=car.position.z-200; }
+ });
 
-  if(keys['a']){ car.position.x-=0.25; car.rotation.y=0.3; }
-  else if(keys['d']){ car.position.x+=0.25; car.rotation.y=-0.3; }
-  else{ car.rotation.y*=0.8; }
-
-  bots.forEach(bot=>{
-    bot.position.z+=0.6;
-    if(Math.abs(bot.position.x-car.position.x)<2 && Math.abs(bot.position.z-car.position.z)<3){ speed*=0.5; }
-    if(bot.position.z>car.position.z+50){ bot.position.z=car.position.z-300; }
-  });
-
-  if(car.position.z<-800){
-    if(lap<3){ lap++; car.position.z=0; document.getElementById('lap').innerText=lap; }
-    else{
-      finished=true;
-      document.getElementById('msg').style.display='block';
-
-      let score=Math.abs(car.position.z);
-      let best=localStorage.getItem("bestScore")||0;
-      if(score>best){ localStorage.setItem("bestScore",score); alert("New High Score: "+score); }
-      else{ alert("Score: "+score+" | Best: "+best); }
-    }
-  }
- }
-
- if(finished){ car.rotation.y+=0.1; camera.position.z-=0.5; }
-
- let racers=[{name:"YOU",z:car.position.z}];
- bots.forEach((b,i)=>racers.push({name:"BOT "+(i+1),z:b.position.z}));
- racers.sort((a,b)=>a.z-b.z);
-
- let text="";
- racers.forEach((r,i)=>{ text+=(i+1)+". "+r.name+"<br>"; });
- document.getElementById('board').innerHTML=text;
-
- camera.position.set(car.position.x,6,car.position.z+12);
+ camera.position.lerp(new THREE.Vector3(car.position.x,5,car.position.z+10),0.1);
  camera.lookAt(car.position);
 
- document.getElementById('speed').innerText=(Math.abs(speed*120)).toFixed(0);
- document.getElementById('nitro').innerText=Math.floor(nitro);
+ document.getElementById('speed').innerText=Math.abs(speed*100).toFixed(0);
 
  renderer.render(scene,camera);
 }
 
-camera.position.set(0,6,12);
+camera.position.set(0,5,10);
 animate();
 
 window.addEventListener('resize',()=>{
@@ -158,166 +94,14 @@ window.addEventListener('resize',()=>{
  camera.updateProjectionMatrix();
  renderer.setSize(innerWidth,innerHeight);
 });
-</script></body>
-</html><!DOCTYPE html><html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Velocity 3D ULTIMATE FINAL</title>
-<style>
-body { margin:0; overflow:hidden; font-family:Arial; }
-#hud, #leaderboard { position:absolute; top:10px; padding:12px; color:white; background:rgba(0,0,0,0.6); border-radius:10px; }
-#hud { left:10px; }
-#leaderboard { right:10px; }
-#msg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:gold; font-size:40px; display:none; }
-#splash, #menu { position:absolute; width:100%; height:100%; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white; z-index:10; }
-#splash { background:black; font-size:40px; }
-#menu { background:#000; z-index:9; }
-button { padding:15px 30px; font-size:20px; }
-</style>
-</head>
-<body><div id="splash">Made by Nama</div><div id="menu">
-<h1>VELOCITY 3D</h1>
-<button onclick="startGame()">START GAME</button>
-</div><div id="hud">Speed: <span id="speed">0</span><br>Nitro: <span id="nitro">100</span><br>Lap: <span id="lap">1</span>/3</div>
-<div id="leaderboard"><b>Leaderboard</b><br><span id="board"></span></div>
-<div id="msg">🏁 YOU WIN! 🏁</div><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script>
-setTimeout(()=>document.getElementById('splash').style.display='none',2000);
-
-let scene=new THREE.Scene();
-scene.background=new THREE.Color(0x87ceeb);
-let camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,2000);
-let renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(innerWidth,innerHeight);
-document.body.appendChild(renderer.domElement);
-
-let light=new THREE.DirectionalLight(0xffffff,1);
-light.position.set(10,20,10);
-scene.add(light);
-scene.add(new THREE.AmbientLight(0x404040));
-
-// ground & road
-let ground=new THREE.Mesh(new THREE.PlaneGeometry(2000,2000),new THREE.MeshStandardMaterial({color:0x228B22}));
-ground.rotation.x=-Math.PI/2; scene.add(ground);
-let road=new THREE.Mesh(new THREE.PlaneGeometry(20,2000),new THREE.MeshStandardMaterial({color:0x111111}));
-road.rotation.x=-Math.PI/2; scene.add(road);
-
-// road lines
-for(let i=0;i<100;i++){
- let line=new THREE.Mesh(new THREE.PlaneGeometry(1,10),new THREE.MeshBasicMaterial({color:0xffffff}));
- line.rotation.x=-Math.PI/2;
- line.position.set(0,0.02,-i*20);
- scene.add(line);
-}
-
-// finish
-let finishLine=new THREE.Mesh(new THREE.PlaneGeometry(20,3),new THREE.MeshBasicMaterial({color:0xffffff}));
-finishLine.rotation.x=-Math.PI/2; finishLine.position.z=-800; scene.add(finishLine);
-
-// car
-let car=new THREE.Mesh(new THREE.BoxGeometry(2,1,4),new THREE.MeshStandardMaterial({color:0xff0000}));
-car.position.y=0.5; scene.add(car);
-
-// bots
-let bots=[];
-for(let i=0;i<5;i++){
- let bot=new THREE.Mesh(new THREE.BoxGeometry(2,1,4),new THREE.MeshStandardMaterial({color:Math.random()*0xffffff}));
- bot.position.set(Math.random()*10-5,0.5,-Math.random()*300);
- bots.push(bot); scene.add(bot);
-}
-
-// trees
-for(let i=0;i<60;i++){
- let trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,3),new THREE.MeshStandardMaterial({color:0x8b4513}));
- let leaves=new THREE.Mesh(new THREE.SphereGeometry(1.5),new THREE.MeshStandardMaterial({color:0x228B22}));
- let x=(Math.random()>0.5?15:-15);
- let z=Math.random()*1800-900;
- trunk.position.set(x,1.5,z);
- leaves.position.set(x,3.5,z);
- scene.add(trunk); scene.add(leaves);
-}
-
-// sound
-let engineSound=new Audio("https://actions.google.com/sounds/v1/transportation/car_accelerate.ogg");
-engineSound.loop=true;
-let nitroSound=new Audio("https://actions.google.com/sounds/v1/fire/fire_burst.ogg");
-
-let keys={};
-document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
-document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
-
-let speed=0,nitro=100,lap=1,finished=false,gameStarted=false;
-
-function startGame(){
- document.getElementById('menu').style.display='none';
- engineSound.play();
- gameStarted=true;
-}
-
-function animate(){
- requestAnimationFrame(animate);
-
- if(!gameStarted){ renderer.render(scene,camera); return; }
-
- if(!finished){
-  if(keys['w']) speed+=0.02;
-  if(keys['s']) speed-=0.02;
-
-  if(keys['shift']&&nitro>0){ speed+=0.05; nitro-=1; if(nitroSound.paused) nitroSound.play(); }
-  else if(nitro<100){ nitro+=0.5; }
-
-  speed*=0.98;
-  car.position.z-=speed;
-
-  if(keys['a']){ car.position.x-=0.25; car.rotation.y=0.3; }
-  else if(keys['d']){ car.position.x+=0.25; car.rotation.y=-0.3; }
-  else{ car.rotation.y*=0.8; }
-
-  bots.forEach(bot=>{
-    bot.position.z+=0.6;
-    if(Math.abs(bot.position.x-car.position.x)<2 && Math.abs(bot.position.z-car.position.z)<3){ speed*=0.5; }
-    if(bot.position.z>car.position.z+50){ bot.position.z=car.position.z-300; }
-  });
-
-  if(car.position.z<-800){
-    if(lap<3){ lap++; car.position.z=0; document.getElementById('lap').innerText=lap; }
-    else{
-      finished=true;
-      document.getElementById('msg').style.display='block';
-
-      let score=Math.abs(car.position.z);
-      let best=localStorage.getItem("bestScore")||0;
-      if(score>best){ localStorage.setItem("bestScore",score); alert("New High Score: "+score); }
-      else{ alert("Score: "+score+" | Best: "+best); }
-    }
-  }
- }
-
- if(finished){ car.rotation.y+=0.1; camera.position.z-=0.5; }
-
- let racers=[{name:"YOU",z:car.position.z}];
- bots.forEach((b,i)=>racers.push({name:"BOT "+(i+1),z:b.position.z}));
- racers.sort((a,b)=>a.z-b.z);
-
- let text="";
- racers.forEach((r,i)=>{ text+=(i+1)+". "+r.name+"<br>"; });
- document.getElementById('board').innerHTML=text;
-
- camera.position.set(car.position.x,6,car.position.z+12);
- camera.lookAt(car.position);
-
- document.getElementById('speed').innerText=(Math.abs(speed*120)).toFixed(0);
- document.getElementById('nitro').innerText=Math.floor(nitro);
-
- renderer.render(scene,camera);
-}
-
-camera.position.set(0,6,12);
-animate();
-
-window.addEventListener('resize',()=>{
- camera.aspect=innerWidth/innerHeight;
- camera.updateProjectionMatrix();
- renderer.setSize(innerWidth,innerHeight);
-});
-</script></body>
-</html>
+</script><!-- MOBILE CONTROLS --><div style="position:absolute;bottom:20px;width:100%;display:flex;justify-content:space-between;padding:0 20px;">
+  <div>
+    <button ontouchstart="keys['a']=true" ontouchend="keys['a']=false" style="padding:20px;font-size:20px;">⬅️</button>
+    <button ontouchstart="keys['d']=true" ontouchend="keys['d']=false" style="padding:20px;font-size:20px;">➡️</button>
+  </div>
+  <div>
+    <button ontouchstart="keys['w']=true" ontouchend="keys['w']=false" style="padding:20px;font-size:20px;">🚀</button>
+    <button ontouchstart="keys['s']=true" ontouchend="keys['s']=false" style="padding:20px;font-size:20px;">🛑</button>
+  </div>
+</div></body>
+ </html>
